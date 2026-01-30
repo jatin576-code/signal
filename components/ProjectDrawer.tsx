@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Globe, Twitter, Linkedin, Send, Edit2, Trash2, Save, Plus, AlertCircle } from 'lucide-react';
-import { Project, TeamMember } from '@/types';
+import { X, Globe, Twitter, Linkedin, Send, Edit2, Trash2, Save, Plus, AlertCircle, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import { Project, TeamMember, AdditionalLink } from '@/types';
 import { supabase } from '@/lib/supabase';
 
 interface ProjectDrawerProps {
@@ -16,6 +16,8 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Edit Form State
   const [formData, setFormData] = useState<Partial<Project>>({});
 
   useEffect(() => {
@@ -33,6 +35,8 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
     if (!url) return '#';
     return url.startsWith('http') ? url : `https://${url}`;
   };
+
+  // -- CRUD HANDLERS --
 
   const confirmDelete = async () => {
     setLoading(true);
@@ -66,9 +70,41 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
     setLoading(false);
   };
 
-  const hasTeam = localProject.team_members && localProject.team_members.length > 0;
+  // -- DYNAMIC FIELD HANDLERS (Identical to AddProject) --
+  
+  // Team
+  const addTeamMember = () => {
+    const current = formData.team_members || [];
+    setFormData({ ...formData, team_members: [...current, { id: crypto.randomUUID(), fullName: '', role: '', xUsername: '', telegramUsername: '', linkedinUsername: '' }] });
+  };
+  const updateTeamMember = (id: string, field: keyof TeamMember, value: string) => {
+    const updated = formData.team_members?.map(m => m.id === id ? { ...m, [field]: value } : m);
+    setFormData({ ...formData, team_members: updated });
+  };
+  const removeTeamMember = (id: string) => {
+    const updated = formData.team_members?.filter(m => m.id !== id);
+    setFormData({ ...formData, team_members: updated });
+  };
 
-  // -- RENDER --
+  // Links
+  const addLink = () => {
+    const current = formData.additional_links || [];
+    setFormData({ ...formData, additional_links: [...current, { id: crypto.randomUUID(), title: '', url: '' }] });
+  };
+  const updateLink = (id: string, field: keyof AdditionalLink, value: string) => {
+    const updated = formData.additional_links?.map(l => l.id === id ? { ...l, [field]: value } : l);
+    setFormData({ ...formData, additional_links: updated });
+  };
+  const removeLink = (id: string) => {
+    const updated = formData.additional_links?.filter(l => l.id !== id);
+    setFormData({ ...formData, additional_links: updated });
+  };
+
+
+  // -- VIEW MODE CHECKS --
+  const hasTeam = localProject.team_members && localProject.team_members.length > 0;
+  const hasLinks = localProject.additional_links && localProject.additional_links.length > 0;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-[#0E1A22]/20 dark:bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
@@ -78,9 +114,7 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
         {/* DELETE MODAL */}
         {showDeleteConfirm && (
           <div className="absolute inset-0 z-50 bg-white/95 dark:bg-[#0B1116]/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200">
-             <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4 text-red-500">
-                <AlertCircle size={32} />
-             </div>
+             <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4 text-red-500"><AlertCircle size={32} /></div>
              <h3 className="text-xl font-bold text-[#0E1A22] dark:text-white mb-2">Delete {localProject.name}?</h3>
              <div className="flex flex-col gap-3 w-full max-w-[260px] mt-6">
                 <button onClick={confirmDelete} disabled={loading} className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl">{loading ? 'Deleting...' : 'Delete Project'}</button>
@@ -98,7 +132,7 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
                 <button onClick={() => setShowDeleteConfirm(true)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"><Trash2 size={18} /></button>
               </>
             ) : (
-              <button onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-[#00E0FF] text-[#0E1A22] text-xs font-bold rounded-lg hover:brightness-105 transition"><Save size={14} /> Save</button>
+              <button onClick={handleSave} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-[#00E0FF] text-[#0E1A22] text-xs font-bold rounded-lg hover:brightness-105 transition"><Save size={14} /> Save Changes</button>
             )}
           </div>
           <button onClick={onClose} className="text-gray-300 hover:text-gray-600 dark:hover:text-gray-400 transition"><X size={20} /></button>
@@ -106,71 +140,62 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
 
         {/* CONTENT */}
         <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar bg-white dark:bg-[#0B1116]">
-          {/* Identity */}
+          
+          {/* --- IDENTITY --- */}
           <div>
             {isEditing ? (
               <div className="space-y-6">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-400 uppercase">Project Name</label>
-                  <input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full mt-1 p-2 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded text-lg font-bold text-[#0E1A22] dark:text-white focus:outline-none focus:border-[#00E0FF]" />
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Project Name</label>
+                  <input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full mt-2 p-3 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded-lg text-sm font-bold text-[#0E1A22] dark:text-white focus:outline-none focus:border-[#00E0FF]" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} placeholder="Website" className="p-2 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded text-sm text-[#0E1A22] dark:text-gray-300" />
-                  <input value={formData.project_x || ''} onChange={e => setFormData({...formData, project_x: e.target.value})} placeholder="X Handle" className="p-2 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded text-sm text-[#0E1A22] dark:text-gray-300" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Website</label>
+                    <input value={formData.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} placeholder="https://..." className="w-full p-3 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded-lg text-sm text-[#0E1A22] dark:text-gray-300 focus:outline-none focus:border-[#00E0FF]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">X Handle</label>
+                    <input value={formData.project_x || ''} onChange={e => setFormData({...formData, project_x: e.target.value})} placeholder="@handle" className="w-full p-3 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded-lg text-sm text-[#0E1A22] dark:text-gray-300 focus:outline-none focus:border-[#00E0FF]" />
+                  </div>
                 </div>
               </div>
             ) : (
               <>
                 <h2 className="text-3xl font-bold text-[#0E1A22] dark:text-white mb-2">{localProject.name}</h2>
                 <div className="flex gap-4">
-                  {/* CHANGED: Replaced "Link" text with domain name logic */}
-                  {localProject.website && (
-                    <a href={ensureUrl(localProject.website)} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]">
-                      <Globe size={14} /> {localProject.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                    </a>
-                  )}
-                  {localProject.project_x && (
-                    <a href={`https://x.com/${localProject.project_x.replace('@', '')}`} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]">
-                      <Twitter size={14} /> {localProject.project_x}
-                    </a>
-                  )}
+                  {localProject.website && <a href={ensureUrl(localProject.website)} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]"><Globe size={14} /> {localProject.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</a>}
+                  {localProject.project_x && <a href={`https://x.com/${localProject.project_x.replace('@', '')}`} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]"><Twitter size={14} /> {localProject.project_x}</a>}
                 </div>
               </>
             )}
           </div>
 
-          {/* Contact */}
+          {/* --- CONTACT & OUTREACH --- */}
           {(isEditing || hasTeam) && (
             <div>
               <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Contact & Outreach</h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {(formData.team_members || []).map((member) => (
-                  <div key={member.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#F8FAFC] dark:bg-[#151F26]">
+                  <div key={member.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#F8FAFC] dark:bg-[#151F26] relative group">
+                    {isEditing && <button onClick={() => removeTeamMember(member.id)} className="absolute top-3 right-3 text-gray-300 hover:text-red-500"><X size={16}/></button>}
+                    
                     {isEditing ? (
                        <div className="space-y-3">
                          <div className="grid grid-cols-2 gap-3">
-                            <input value={member.fullName} onChange={(e) => {
-                               const updated = formData.team_members?.map(m => m.id === member.id ? {...m, fullName: e.target.value} : m);
-                               setFormData({...formData, team_members: updated});
-                            }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Name" />
-                            <input value={member.role} onChange={(e) => {
-                               const updated = formData.team_members?.map(m => m.id === member.id ? {...m, role: e.target.value} : m);
-                               setFormData({...formData, team_members: updated});
-                            }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Role" />
+                            <div>
+                               <label className="block text-[9px] font-bold text-gray-300 dark:text-gray-500 uppercase mb-1">Name</label>
+                               <input value={member.fullName} onChange={(e) => updateTeamMember(member.id, 'fullName', e.target.value)} className="w-full bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm text-[#0E1A22] dark:text-white" />
+                            </div>
+                            <div>
+                               <label className="block text-[9px] font-bold text-gray-300 dark:text-gray-500 uppercase mb-1">Role</label>
+                               <input value={member.role} onChange={(e) => updateTeamMember(member.id, 'role', e.target.value)} className="w-full bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm text-[#0E1A22] dark:text-white" />
+                            </div>
                          </div>
                          <div className="grid grid-cols-3 gap-2">
-                           <input value={member.xUsername} onChange={(e) => {
-                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, xUsername: e.target.value} : m);
-                              setFormData({...formData, team_members: updated});
-                           }} placeholder="X" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
-                           <input value={member.telegramUsername} onChange={(e) => {
-                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, telegramUsername: e.target.value} : m);
-                              setFormData({...formData, team_members: updated});
-                           }} placeholder="TG" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
-                           <input value={member.linkedinUsername} onChange={(e) => {
-                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, linkedinUsername: e.target.value} : m);
-                              setFormData({...formData, team_members: updated});
-                           }} placeholder="IN" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                           <input value={member.xUsername} onChange={(e) => updateTeamMember(member.id, 'xUsername', e.target.value)} placeholder="X" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                           <input value={member.telegramUsername} onChange={(e) => updateTeamMember(member.id, 'telegramUsername', e.target.value)} placeholder="TG" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                           <input value={member.linkedinUsername} onChange={(e) => updateTeamMember(member.id, 'linkedinUsername', e.target.value)} placeholder="IN" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
                          </div>
                        </div>
                     ) : (
@@ -179,7 +204,6 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
                              <p className="text-sm font-bold text-[#0E1A22] dark:text-white">{member.fullName}</p>
                              <p className="text-xs text-gray-400">{member.role}</p>
                           </div>
-                          {/* ADDED: Restored social icons display */}
                           <div className="flex gap-2 opacity-60 hover:opacity-100 transition">
                             {member.xUsername && <a href={`https://x.com/${member.xUsername.replace('@', '')}`} target="_blank" className="p-1.5 bg-white dark:bg-[#0B1116] rounded-md text-gray-400 hover:text-[#00E0FF] transition"><Twitter size={12} /></a>}
                             {member.telegramUsername && <a href={`https://t.me/${member.telegramUsername.replace('@', '')}`} target="_blank" className="p-1.5 bg-white dark:bg-[#0B1116] rounded-md text-gray-400 hover:text-[#00E0FF] transition"><Send size={12} /></a>}
@@ -189,11 +213,16 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
                     )}
                   </div>
                 ))}
+                {isEditing && (
+                  <button onClick={addTeamMember} className="w-full py-3 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wide hover:border-[#00E0FF] hover:text-[#00E0FF] transition flex items-center justify-center gap-2 bg-[#F8FAFC]/50 dark:bg-[#151F26]/50">
+                    <Plus size={14} /> Add Team Member
+                  </button>
+                )}
               </div>
             </div>
           )}
 
-          {/* 3. DISCORD */}
+          {/* --- DISCORD --- */}
           <div className="flex justify-between items-center py-4 border-t border-b border-gray-50 dark:border-gray-800">
              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Discord Ticket Available</span>
              {isEditing ? (
@@ -208,7 +237,7 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
              )}
           </div>
 
-          {/* 4. NOTES */}
+          {/* --- NOTES --- */}
           <div>
             <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Notes</h3>
             {isEditing ? (
@@ -226,6 +255,41 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
               )
             )}
           </div>
+
+          {/* --- ADDITIONAL LINKS (NEW) --- */}
+          {(isEditing || hasLinks) && (
+            <div>
+              <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Additional Links</h3>
+              <div className="space-y-3">
+                
+                {/* View Mode: Clean List */}
+                {!isEditing && localProject.additional_links?.map(link => (
+                  <a key={link.id} href={ensureUrl(link.url)} target="_blank" className="block p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-[#F8FAFC] dark:bg-[#151F26] hover:border-[#00E0FF] group transition">
+                    <div className="flex items-center justify-between">
+                       <span className="text-sm font-bold text-[#0E1A22] dark:text-white group-hover:text-[#00E0FF] transition">{link.title}</span>
+                       <ExternalLink size={14} className="text-gray-400 group-hover:text-[#00E0FF]" />
+                    </div>
+                  </a>
+                ))}
+
+                {/* Edit Mode: Full Inputs */}
+                {isEditing && (
+                  <>
+                    {formData.additional_links?.map(link => (
+                      <div key={link.id} className="flex gap-2 items-center">
+                        <input value={link.title} onChange={(e) => updateLink(link.id, 'title', e.target.value)} className="w-1/3 p-2 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded text-sm text-[#0E1A22] dark:text-white" placeholder="Title" />
+                        <input value={link.url} onChange={(e) => updateLink(link.id, 'url', e.target.value)} className="flex-1 p-2 bg-[#F8FAFC] dark:bg-[#151F26] border border-gray-100 dark:border-gray-700 rounded text-sm text-[#0E1A22] dark:text-white" placeholder="URL" />
+                        <button onClick={() => removeLink(link.id)} className="text-gray-300 hover:text-red-500"><Trash2 size={16} /></button>
+                      </div>
+                    ))}
+                    <button onClick={addLink} className="w-full py-3 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 dark:text-gray-500 text-xs font-bold uppercase tracking-wide hover:border-[#00E0FF] hover:text-[#00E0FF] transition flex items-center justify-center gap-2 bg-[#F8FAFC]/50 dark:bg-[#151F26]/50">
+                      <LinkIcon size={14} /> Add Link
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
