@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Globe, Twitter, Linkedin, Send, Edit2, Trash2, Save, Plus, MinusCircle, AlertCircle } from 'lucide-react';
+import { X, Globe, Twitter, Linkedin, Send, Edit2, Trash2, Save, Plus, AlertCircle } from 'lucide-react';
 import { Project, TeamMember } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -67,8 +67,6 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
   };
 
   const hasTeam = localProject.team_members && localProject.team_members.length > 0;
-  const hasDiscord = localProject.discord_ticket === true;
-  const hasNotes = localProject.notes && localProject.notes.trim().length > 0;
 
   // -- RENDER --
   return (
@@ -125,8 +123,17 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
               <>
                 <h2 className="text-3xl font-bold text-[#0E1A22] dark:text-white mb-2">{localProject.name}</h2>
                 <div className="flex gap-4">
-                  {localProject.website && <a href={ensureUrl(localProject.website)} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]"><Globe size={14} /> Link</a>}
-                  {localProject.project_x && <a href={`https://x.com/${localProject.project_x}`} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]"><Twitter size={14} /> Twitter</a>}
+                  {/* CHANGED: Replaced "Link" text with domain name logic */}
+                  {localProject.website && (
+                    <a href={ensureUrl(localProject.website)} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]">
+                      <Globe size={14} /> {localProject.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                    </a>
+                  )}
+                  {localProject.project_x && (
+                    <a href={`https://x.com/${localProject.project_x.replace('@', '')}`} target="_blank" className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-[#00E0FF]">
+                      <Twitter size={14} /> {localProject.project_x}
+                    </a>
+                  )}
                 </div>
               </>
             )}
@@ -140,20 +147,44 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
                 {(formData.team_members || []).map((member) => (
                   <div key={member.id} className="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-[#F8FAFC] dark:bg-[#151F26]">
                     {isEditing ? (
-                       <div className="grid grid-cols-2 gap-3 mb-2">
-                          <input value={member.fullName} onChange={(e) => {
-                             const updated = formData.team_members?.map(m => m.id === member.id ? {...m, fullName: e.target.value} : m);
-                             setFormData({...formData, team_members: updated});
-                          }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Name" />
-                          <input value={member.role} onChange={(e) => {
-                             const updated = formData.team_members?.map(m => m.id === member.id ? {...m, role: e.target.value} : m);
-                             setFormData({...formData, team_members: updated});
-                          }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Role" />
+                       <div className="space-y-3">
+                         <div className="grid grid-cols-2 gap-3">
+                            <input value={member.fullName} onChange={(e) => {
+                               const updated = formData.team_members?.map(m => m.id === member.id ? {...m, fullName: e.target.value} : m);
+                               setFormData({...formData, team_members: updated});
+                            }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Name" />
+                            <input value={member.role} onChange={(e) => {
+                               const updated = formData.team_members?.map(m => m.id === member.id ? {...m, role: e.target.value} : m);
+                               setFormData({...formData, team_members: updated});
+                            }} className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-sm text-[#0E1A22] dark:text-white" placeholder="Role" />
+                         </div>
+                         <div className="grid grid-cols-3 gap-2">
+                           <input value={member.xUsername} onChange={(e) => {
+                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, xUsername: e.target.value} : m);
+                              setFormData({...formData, team_members: updated});
+                           }} placeholder="X" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                           <input value={member.telegramUsername} onChange={(e) => {
+                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, telegramUsername: e.target.value} : m);
+                              setFormData({...formData, team_members: updated});
+                           }} placeholder="TG" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                           <input value={member.linkedinUsername} onChange={(e) => {
+                              const updated = formData.team_members?.map(m => m.id === member.id ? {...m, linkedinUsername: e.target.value} : m);
+                              setFormData({...formData, team_members: updated});
+                           }} placeholder="IN" className="bg-white dark:bg-[#0B1116] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs" />
+                         </div>
                        </div>
                     ) : (
-                       <div>
-                          <p className="text-sm font-bold text-[#0E1A22] dark:text-white">{member.fullName}</p>
-                          <p className="text-xs text-gray-400">{member.role}</p>
+                       <div className="flex justify-between items-center">
+                          <div>
+                             <p className="text-sm font-bold text-[#0E1A22] dark:text-white">{member.fullName}</p>
+                             <p className="text-xs text-gray-400">{member.role}</p>
+                          </div>
+                          {/* ADDED: Restored social icons display */}
+                          <div className="flex gap-2 opacity-60 hover:opacity-100 transition">
+                            {member.xUsername && <a href={`https://x.com/${member.xUsername.replace('@', '')}`} target="_blank" className="p-1.5 bg-white dark:bg-[#0B1116] rounded-md text-gray-400 hover:text-[#00E0FF] transition"><Twitter size={12} /></a>}
+                            {member.telegramUsername && <a href={`https://t.me/${member.telegramUsername.replace('@', '')}`} target="_blank" className="p-1.5 bg-white dark:bg-[#0B1116] rounded-md text-gray-400 hover:text-[#00E0FF] transition"><Send size={12} /></a>}
+                            {member.linkedinUsername && <a href={`https://linkedin.com/in/${member.linkedinUsername}`} target="_blank" className="p-1.5 bg-white dark:bg-[#0B1116] rounded-md text-gray-400 hover:text-[#00E0FF] transition"><Linkedin size={12} /></a>}
+                          </div>
                        </div>
                     )}
                   </div>
@@ -161,6 +192,41 @@ export default function ProjectDrawer({ project, onClose, onUpdate }: ProjectDra
               </div>
             </div>
           )}
+
+          {/* 3. DISCORD */}
+          <div className="flex justify-between items-center py-4 border-t border-b border-gray-50 dark:border-gray-800">
+             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Discord Ticket Available</span>
+             {isEditing ? (
+               <div className="flex bg-gray-100 dark:bg-[#151F26] rounded p-1">
+                 <button onClick={() => setFormData({...formData, discord_ticket: true})} className={`px-3 py-1 text-xs font-bold rounded ${formData.discord_ticket ? 'bg-white dark:bg-[#0E1A22] shadow text-[#00E0FF]' : 'text-gray-400'}`}>YES</button>
+                 <button onClick={() => setFormData({...formData, discord_ticket: false})} className={`px-3 py-1 text-xs font-bold rounded ${!formData.discord_ticket ? 'bg-white dark:bg-[#0E1A22] shadow text-gray-800 dark:text-white' : 'text-gray-400'}`}>NO</button>
+               </div>
+             ) : (
+               <span className={`text-xs font-bold px-3 py-1 rounded-full ${localProject.discord_ticket ? 'bg-[#00E0FF]/10 text-[#00E0FF]' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                  {localProject.discord_ticket ? 'YES' : 'NO'}
+               </span>
+             )}
+          </div>
+
+          {/* 4. NOTES */}
+          <div>
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Notes</h3>
+            {isEditing ? (
+              <textarea 
+                value={formData.notes || ''} 
+                onChange={e => setFormData({...formData, notes: e.target.value})}
+                className="w-full h-32 p-3 bg-yellow-50/50 dark:bg-[#151F26] border border-yellow-100 dark:border-gray-700 rounded-xl text-sm text-[#92400e] dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-yellow-400 dark:focus:ring-[#00E0FF] resize-none"
+                placeholder="Internal context..."
+              />
+            ) : (
+              localProject.notes && (
+                <div className="bg-[#fffbeb] dark:bg-[#151F26] text-[#92400e] dark:text-gray-300 text-sm p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
+                  {localProject.notes}
+                </div>
+              )
+            )}
+          </div>
+
         </div>
       </div>
     </div>
