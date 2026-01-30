@@ -22,8 +22,6 @@ export default function SignalBoard() {
   const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  
-  // Theme Hook
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -90,7 +88,6 @@ export default function SignalBoard() {
   if (!isMounted) return null;
 
   return (
-    // DARK MODE: Main background changes from Pale Cyan to Deep Navy (#05090C)
     <div className="min-h-screen bg-[#E6F5FC] dark:bg-[#05090C] text-[#0E1A22] dark:text-[#E6F5FC] font-sans flex flex-col selection:bg-[#00E0FF]/20 transition-colors duration-300">
       
       {selectedProject && (
@@ -111,7 +108,6 @@ export default function SignalBoard() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* THEME TOGGLE SWITCH */}
           <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -158,7 +154,7 @@ export default function SignalBoard() {
                   return (
                     <div key={col.id} className="flex-1 flex flex-col min-w-[280px]">
                       
-                      {/* HEADER: Dark Mode Colors */}
+                      {/* HEADER */}
                       <div className="flex justify-between items-center mb-5 px-1 pb-3 border-b-2 border-gray-200 dark:border-gray-800">
                         <h3 className="text-[12px] font-black text-[#0E1A22] dark:text-[#94A3B8] uppercase tracking-wide">{col.title}</h3>
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${columnProjects.length > 0 ? 'bg-[#E2E8F0] dark:bg-[#1E293B] text-[#0E1A22] dark:text-white' : 'bg-gray-100 dark:bg-gray-900 text-gray-400 dark:text-gray-600'}`}>
@@ -193,7 +189,6 @@ export default function SignalBoard() {
                                       group cursor-pointer select-none relative overflow-hidden
                                       transition-all duration-200 ease-out
                                       
-                                      /* DARK MODE: Card bg becomes #0E1A22 (Navy), Border #1E293B */
                                       ${snapshot.isDragging 
                                         ? 'bg-white dark:bg-[#0E1A22] shadow-2xl scale-[1.02] z-50 border-[#00E0FF] ring-4 ring-[#00E0FF]/10' 
                                         : 'bg-white dark:bg-[#0E1A22] border-gray-200 dark:border-gray-800 shadow-none hover:shadow-lg hover:-translate-y-[2px] hover:border-[#00E0FF]/40 dark:hover:border-[#00E0FF]/40'
@@ -201,20 +196,21 @@ export default function SignalBoard() {
                                     `}
                                   >
                                     
-                                    {/* PROJECT NAME */}
+                                    {/* NAME */}
                                     <div className="mb-4">
                                       <h4 className="font-black text-[#0E1A22] dark:text-white text-[16px] leading-snug tracking-tight">
                                         {project.name}
                                       </h4>
                                     </div>
 
-                                    {/* LINKS */}
+                                    {/* LINKS (FIXED OVERFLOW) */}
                                     {(project.website || project.project_x) && (
-                                      <div className="flex items-center gap-2 mb-4">
+                                      <div className="flex flex-wrap items-center gap-2 mb-4">
                                         {project.website && (
                                           <a 
                                             href={ensureUrl(project.website)} 
                                             target="_blank" 
+                                            title={project.website}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#F8FAFC] dark:bg-[#151F26] rounded-lg text-gray-500 dark:text-gray-400 hover:text-[#0E1A22] dark:hover:text-white hover:bg-[#F0FAFC] dark:hover:bg-[#1E293B] transition group/link border border-transparent hover:border-[#00E0FF]/20"
                                             onClick={(e) => e.stopPropagation()}
                                           >
@@ -229,11 +225,13 @@ export default function SignalBoard() {
                                           <a 
                                             href={`https://x.com/${project.project_x.replace('@', '')}`} 
                                             target="_blank" 
+                                            title={`https://x.com/${project.project_x}`}
                                             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#F8FAFC] dark:bg-[#151F26] rounded-lg text-gray-500 dark:text-gray-400 hover:text-[#0E1A22] dark:hover:text-white hover:bg-[#F0FAFC] dark:hover:bg-[#1E293B] transition group/link border border-transparent hover:border-[#00E0FF]/20"
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             <Twitter size={13} className="text-[#00E0FF] fill-none" />
-                                            <span className="text-[11px] font-bold tracking-wide truncate">
+                                            {/* ADDED: max-w to match website link, ensuring both fit or truncate */}
+                                            <span className="text-[11px] font-bold tracking-wide truncate max-w-[100px]">
                                               {project.project_x.startsWith('@') ? project.project_x : `@${project.project_x}`}
                                             </span>
                                           </a>
